@@ -1,10 +1,37 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+//
+using SixLabors.ImageSharp;
+using Gym.Environments;
+using Gym.Environments.Envs.Classic;
+using Gym.Rendering.WinForm;
+//
+using NumSharp;
+using Tensorflow;
+using Tensorflow.Keras;
+using Tensorflow.Keras.ArgsDefinition;
+using Tensorflow.Keras.Engine;
+using Tensorflow.Keras.Layers;
+using Tensorflow.Keras.Losses;
+using Tensorflow.Keras.Optimizers;
+using Tensorflow.Keras.Utils;
+using static Tensorflow.Binding;
+using static Tensorflow.KerasApi;
+using CustomRandom;
+//
+
+#!/usr/bin/python3
 import gym
 import numpy as np
 import tensorflow as tf
 from policy_net import Policy_net
 from ppo import PPOTrain
 
-ITERATION = int(3 * 10e5)
+ITERATION = int(1e5)
 GAMMA = 0.95
 
 
@@ -18,9 +45,8 @@ def main():
     saver = tf.train.Saver()
 
     with tf.Session() as sess:
-        writer = tf.summary.FileWriter('./log/test', sess.graph)
+        writer = tf.summary.FileWriter('./log/train', sess.graph)
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, 'model/model.ckpt')
         obs = env.reset()
         reward = 0
         success_num = 0
@@ -34,7 +60,7 @@ def main():
             while True:  # run policy RUN_POLICY_STEPS which is much less than episode length
                 run_policy_steps += 1
                 obs = np.stack([obs]).astype(dtype=np.float32)  # prepare to feed placeholder Policy.obs
-                act, v_pred = Policy.act(obs=obs, stochastic=False)
+                act, v_pred = Policy.act(obs=obs, stochastic=True)
 
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
@@ -47,7 +73,7 @@ def main():
                 next_obs, reward, done, info = env.step(act)
 
                 if done:
-                    v_preds_next = v_preds[1:] + [0]  # next state of terminate state has value 0
+                    v_preds_next = v_preds[1:] + [0]  # next state of terminate state has 0 state value
                     obs = env.reset()
                     reward = -1
                     break
@@ -59,12 +85,11 @@ def main():
             writer.add_summary(tf.Summary(value=[tf.Summary.Value(tag='episode_reward', simple_value=sum(rewards))])
                                , iteration)
 
-            # end condition of test
             if sum(rewards) >= 195:
                 success_num += 1
                 if success_num >= 100:
-                    print('Iteration: ', iteration)
-                    print('Clear!!')
+                    saver.save(sess, './model/model.ckpt')
+                    print('Clear!! Model saved.')
                     break
             else:
                 success_num = 0
@@ -79,7 +104,19 @@ def main():
             gaes = np.array(gaes).astype(dtype=np.float32)
             gaes = (gaes - gaes.mean()) / gaes.std()
 
+            PPO.assign_policy_parameters()
+
             inp = [observations, actions, rewards, v_preds_next, gaes]
+
+            # train
+            for epoch in range(4):
+                sample_indices = np.random.randint(low=0, high=observations.shape[0], size=64)  # indices are in [low, high)
+                sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]  # sample training data
+                PPO.train(obs=sampled_inp[0],
+                          actions=sampled_inp[1],
+                          rewards=sampled_inp[2],
+                          v_preds_next=sampled_inp[3],
+                          gaes=sampled_inp[4])
 
             summary = PPO.get_summary(obs=inp[0],
                                       actions=inp[1],
