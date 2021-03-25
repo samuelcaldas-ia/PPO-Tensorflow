@@ -51,7 +51,7 @@ var GAMMA = 0.95;
         reward = 0;
         success_num = 0;
 
-        for (int iteration in range(ITERATION)){  // episode
+        for (int iteration <= ITERATION)){  // episode
             observations = new List<double>();
             actions = new List<double>();
             v_preds = new List<double>();
@@ -110,7 +110,7 @@ var GAMMA = 0.95;
             inp = [observations, actions, rewards, v_preds_next, gaes];
 
             // train
-            for (int epoch in range(4)){
+            for (int epoch <= 4)){
                 sample_indices = np.random.randint(low:0, high:observations.shape[0], size:64);  // indices are in [low, high)
                 sampled_inp = [np.take(a:a, indices:sample_indices, axis:0) for (int a in inp];  // sample training data
                 PPO.train(obs:sampled_inp[0],

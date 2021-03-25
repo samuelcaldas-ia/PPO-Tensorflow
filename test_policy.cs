@@ -35,9 +35,9 @@ var GAMMA = 0.95;
 
 
 static object Main(){
-    env = new CartPoleEnv(WinFormEnvViewer.Factory);
+    var env = new CartPoleEnv(WinFormEnvViewer.Factory);
     env.Seed(0);
-    ob_space = env.ObservationSpace;
+    var ob_space = env.ObservationSpace;
     Policy = Policy_net("policy", env);
     Old_Policy = Policy_net("old_policy", env);
     PPO = PPOTrain(Policy, Old_Policy, gamma: GAMMA);
@@ -51,7 +51,8 @@ static object Main(){
         reward = 0;
         success_num = 0;
 
-        for (int iteration in range(ITERATION)){  // episode
+        for (int iteration=0; iteration<=ITERATION; iteration++)
+        {  // episode
             observations = new List<double>();
             actions = new List<double>();
             v_preds = new List<double>();
@@ -98,7 +99,7 @@ static object Main(){
 
             gaes = PPO.get_gaes(rewards:rewards, v_preds:v_preds, v_preds_next:v_preds_next);
 
-            // convert list to numpy array for (int feeding tf.placeholder
+            // convert list to numpy array for feeding tf.placeholder
             observations = np.reshape(observations, newshape:[-1] + list(ob_space.shape));
             actions = np.array(actions).astype(dtype:np.int32);
             rewards = np.array(rewards).astype(dtype:np.float32);

@@ -31,7 +31,13 @@ using CustomRandom;
 
 class Policy_net
 {
-    static object Policy_net(object name, object env, object temp = 0.1)
+    private static Tensor act_probs;
+    private static Tensor v_preds;
+    private static Tensor act_stochastic;
+    private static Tensor act_deterministic;
+    private static string scope;
+
+    static object Policy_net(object name, object env, double temp = 0.1)
     {
         /*/
         :param name: string
@@ -39,54 +45,51 @@ class Policy_net
         :param temp: temperature of boltzmann distribution
         /*/
 
-        ob_space = env.ObservationSpace;
-        act_space = env.ActionSpace;
+        var ob_space = env.ObservationSpace;
+        var act_space = env.ActionSpace;
 
         using (tf.variable_scope(name))
         {
-            this.obs = tf.placeholder(dtype: tf.float32, shape:[null] + list(ob_space.shape), name: "obs");
+            var obs = tf.placeholder(dtype: tf.float32, shape:(null) + list(ob_space.shape), name: "obs");
 
             using (tf.variable_scope("policy_net"))
             {
-                layer_1 = tf.layers.dense(inputs: this.obs, units: 20, activation: tf.tanh);
-                layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
-                layer_3 = tf.layers.dense(inputs: layer_2, units: act_space.n, activation: tf.tanh);
-                this.act_probs = tf.layers.dense(inputs: tf.divide(layer_3, temp), units: act_space.n, activation: tf.nn.softmax);
+                var layer_1 = tf.layers.dense(inputs: obs, units: 20, activation: tf.tanh);
+                var layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
+                var layer_3 = tf.layers.dense(inputs: layer_2, units: act_space.n, activation: tf.tanh);
+                act_probs = tf.layers.dense(inputs: tf.divide(layer_3, temp), units: act_space.n, activation: tf.nn.softmax);
             }
             using (tf.variable_scope("value_net"))
             {
-                layer_1 = tf.layers.dense(inputs: this.obs, units: 20, activation: tf.tanh);
-                layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
-                this.v_preds = tf.layers.dense(inputs: layer_2, units: 1, activation: null);
+                var layer_1 = tf.layers.dense(inputs: obs, units: 20, activation: tf.tanh);
+                var layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
+                v_preds = tf.layers.dense(inputs: layer_2, units: 1, activation: null);
             }
-            this.act_stochastic = tf.multinomial(tf.log(this.act_probs), num_samples = 1);
-            this.act_stochastic = tf.reshape(this.act_stochastic, shape:[-1]);
+            act_stochastic = tf.multinomial(tf.log(act_probs), num_samples: 1);
+            act_stochastic = tf.reshape(act_stochastic, shape:[-1]);
 
-            this.act_deterministic = tf.argmax(this.act_probs, axis: 1);
+            act_deterministic = tf.argmax(act_probs, axis: 1);
 
-            this.scope = tf.get_variable_scope().name;
+            scope = tf.get_variable_scope().name;
         }
     }
-    static object act(object obs, object stochastic = true)
+    static object act(object obs, bool stochastic = true)
     {
         if (stochastic)
-            return tf.get_default_session().run([this.act_stochastic, this.v_preds], feed_dict: { this.obs: obs});
+            return tf.get_default_session().run((act_stochastic, v_preds), feed_dict: new[] { (obs: obs) });
         else
-            return tf.get_default_session().run([this.act_deterministic, this.v_preds], feed_dict: { this.obs: obs});
-
+            return tf.get_default_session().run((act_deterministic, v_preds), feed_dict: new[] { (obs: obs) });
     }
     static object get_action_prob(object obs)
     {
-        return tf.get_default_session().run(this.act_probs, feed_dict:{ this.obs: obs});
-
+        return tf.get_default_session().run(act_probs, feed_dict: new[]{ (obs: obs) });
     }
     static object get_variables()
     {
-        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, this.scope);
-
+        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope);
     }
     static object get_trainable_variables()
     {
-        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, this.scope);
+        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope);
     }
 }
