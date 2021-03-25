@@ -28,68 +28,70 @@ using CustomRandom;
 // import numpy as np
 // import tensorflow as tf
 
-
-class Policy_net
+namespace PPO_TF
 {
-    private static Tensor act_probs;
-    private static Tensor v_preds;
-    private static Tensor act_stochastic;
-    private static Tensor act_deterministic;
-    private static string scope;
-
-    static object Policy_net(object name, object env, double temp = 0.1)
+    class Policy_net
     {
-        /*/
-        :param name: string
-        :param env: gym env
-        :param temp: temperature of boltzmann distribution
-        /*/
+        private static Tensor act_probs;
+        private static Tensor v_preds;
+        private static Tensor act_stochastic;
+        private static Tensor act_deterministic;
+        private static string scope;
 
-        var ob_space = env.ObservationSpace;
-        var act_space = env.ActionSpace;
-
-        using (tf.variable_scope(name))
+        public Policy_net(string name, CartPoleEnv env, double temp = 0.1)
         {
-            var obs = tf.placeholder(dtype: tf.float32, shape:(null) + list(ob_space.shape), name: "obs");
+            /*/
+            :param name: string
+            :param env: gym env
+            :param temp: temperature of boltzmann distribution
+            /*/
 
-            using (tf.variable_scope("policy_net"))
+            var ob_space = env.ObservationSpace;
+            var act_space = env.ActionSpace;
+
+            using (tf.variable_scope(name))
             {
-                var layer_1 = tf.layers.dense(inputs: obs, units: 20, activation: tf.tanh);
-                var layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
-                var layer_3 = tf.layers.dense(inputs: layer_2, units: act_space.n, activation: tf.tanh);
-                act_probs = tf.layers.dense(inputs: tf.divide(layer_3, temp), units: act_space.n, activation: tf.nn.softmax);
-            }
-            using (tf.variable_scope("value_net"))
-            {
-                var layer_1 = tf.layers.dense(inputs: obs, units: 20, activation: tf.tanh);
-                var layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
-                v_preds = tf.layers.dense(inputs: layer_2, units: 1, activation: null);
-            }
-            act_stochastic = tf.multinomial(tf.log(act_probs), num_samples: 1);
-            act_stochastic = tf.reshape(act_stochastic, shape:[-1]);
+                var obs = tf.placeholder(dtype: tf.float32, shape: (null) + list(ob_space.shape), name: "obs");
 
-            act_deterministic = tf.argmax(act_probs, axis: 1);
+                using (tf.variable_scope("policy_net"))
+                {
+                    var layer_1 = tf.layers.dense(inputs: obs, units: 20, activation: tf.tanh);
+                    var layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
+                    var layer_3 = tf.layers.dense(inputs: layer_2, units: act_space.n, activation: tf.tanh);
+                    act_probs = tf.layers.dense(inputs: tf.divide(layer_3, temp), units: act_space.n, activation: tf.nn.softmax);
+                }
+                using (tf.variable_scope("value_net"))
+                {
+                    var layer_1 = tf.layers.dense(inputs: obs, units: 20, activation: tf.tanh);
+                    var layer_2 = tf.layers.dense(inputs: layer_1, units: 20, activation: tf.tanh);
+                    v_preds = tf.layers.dense(inputs: layer_2, units: 1, activation: null);
+                }
+                act_stochastic = tf.multinomial(tf.log(act_probs), num_samples: 1);
+                act_stochastic = tf.reshape(act_stochastic, shape:[-1]);
 
-            scope = tf.get_variable_scope().name;
+                act_deterministic = tf.argmax(act_probs, axis: 1);
+
+                scope = tf.get_variable_scope().name;
+            }
         }
-    }
-    static object act(object obs, bool stochastic = true)
-    {
-        if (stochastic)
-            return tf.get_default_session().run((act_stochastic, v_preds), feed_dict: new[] { (obs: obs) });
-        else
-            return tf.get_default_session().run((act_deterministic, v_preds), feed_dict: new[] { (obs: obs) });
-    }
-    static object get_action_prob(object obs)
-    {
-        return tf.get_default_session().run(act_probs, feed_dict: new[]{ (obs: obs) });
-    }
-    static object get_variables()
-    {
-        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope);
-    }
-    static object get_trainable_variables()
-    {
-        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope);
+        static object act(object obs, bool stochastic = true)
+        {
+            if (stochastic)
+                return tf.get_default_session().run((act_stochastic, v_preds), feed_dict: new[] { (obs: obs) });
+            else
+                return tf.get_default_session().run((act_deterministic, v_preds), feed_dict: new[] { (obs: obs) });
+        }
+        static object get_action_prob(object obs)
+        {
+            return tf.get_default_session().run(act_probs, feed_dict: new[] { (obs: obs) });
+        }
+        List<object> get_variables()
+        {
+            return tf.get_collection<object>(tf.GraphKeys.GLOBAL_VARIABLES, scope);
+        }
+        public List<object> get_trainable_variables()
+        {
+            return tf.get_collection<object>(tf.GraphKeys.TRAINABLE_VARIABLES, scope);
+        }
     }
 }

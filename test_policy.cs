@@ -29,19 +29,22 @@ using CustomRandom;
 // import tensorflow as tf
 // from policy_net import Policy_net
 // from ppo import PPOTrain
+namespace PPO_TF
+{
+    int ITERATION = int(3 * 10e5);
+    var GAMMA = 0.95;
 
-var ITERATION = int(3 * 10e5);
-var GAMMA = 0.95;
-
-
-static object Main(){
-    var env = new CartPoleEnv(WinFormEnvViewer.Factory);
-    env.Seed(0);
-    var ob_space = env.ObservationSpace;
-    Policy = Policy_net("policy", env);
-    Old_Policy = Policy_net("old_policy", env);
-    PPO = PPOTrain(Policy, Old_Policy, gamma: GAMMA);
-    saver = tf.train.Saver();
+    class test_polocy
+    {
+        void Main()
+        {
+            var env = new CartPoleEnv(WinFormEnvViewer.Factory);
+            env.Seed(0);
+            var ob_space = env.ObservationSpace;
+            var Policy = new Policy_net("policy", env);
+            var Old_Policy = new Policy_net("old_policy", env);
+            var PPO = new PPOTrain(Policy, Old_Policy, gamma: GAMMA);
+            var saver = tf.train.Saver();
 
     using (var sess = tf.Session()){
         writer = tf.summary.FileWriter("./log/test", sess.graph);
